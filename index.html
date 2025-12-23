@@ -1,176 +1,266 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>FPS Challenge</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #fff; /* homemade website vibe */
-            color: #000;
-            overflow: hidden;
-        }
+<meta charset="UTF-8">
+<title>FPS Challenge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        #panel {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: #eee;
-            border: 1px solid #aaa;
-            padding: 10px;
-            border-radius: 6px;
-            z-index: 10;
-        }
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f7f7f7;
+        color: #111;
+    }
 
-        #fpsDisplay {
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
+    #top {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: #ffffff;
+        border: 1px solid #bbb;
+        padding: 12px;
+        border-radius: 6px;
+        z-index: 10;
+        width: 260px;
+    }
 
-        button {
-            margin: 4px;
-            padding: 6px 10px;
-            border: 1px solid #666;
-            cursor: pointer;
-            background: #ddd;
-        }
-        
-        #graph {
-            border: 1px solid #555;
-            background: #fff;
-            margin-top: 8px;
-        }
-    </style>
+    #fps {
+        font-size: 22px;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    button {
+        padding: 6px 10px;
+        margin: 3px;
+        border: 1px solid #777;
+        background: #eee;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #ddd;
+    }
+
+    canvas {
+        display: block;
+    }
+
+    #graph {
+        border: 1px solid #777;
+        margin-top: 8px;
+        background: #fff;
+    }
+
+    #content {
+        margin-top: 90px;
+        padding: 20px;
+        max-width: 900px;
+    }
+
+    .box {
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    h2 {
+        margin-top: 0;
+    }
+
+    footer {
+        text-align: right;
+        padding: 12px 20px;
+        color: #555;
+        font-size: 14px;
+    }
+</style>
 </head>
 
 <body>
 
-<div id="panel">
-    <div id="fpsDisplay">FPS: 0</div>
-    <button onclick="startGame()">Start</button><br>
+<div id="top">
+    <div id="fps">FPS: 0</div>
+
+    <button onclick="startTest()">Start</button>
+    <button onclick="stopTest()">Stop</button><br>
+
     <button onclick="addBalls(50)">Add 50</button>
     <button onclick="addBalls(100)">Add 100</button><br>
     <button onclick="addBalls(1000)">Add 1000</button>
     <button onclick="addBalls(5000)">Add 5000</button>
-    <canvas id="graph" width="200" height="60"></canvas>
+
+    <canvas id="graph" width="240" height="80"></canvas>
 </div>
 
-<canvas id="mainCanvas"></canvas>
+<canvas id="scene"></canvas>
+
+<div id="content">
+
+<div class="box">
+<h2>Understanding Frame Rates: A Comprehensive Guide</h2>
+<p>Frame rate, measured in frames per second (FPS), determines how smooth motion appears in video and games.</p>
+
+<ul>
+<li><b>24 FPS</b> – Cinematic look, films</li>
+<li><b>30 FPS</b> – TV and online video</li>
+<li><b>60 FPS</b> – Gaming and sports</li>
+<li><b>90 FPS</b> – VR content</li>
+<li><b>120 FPS</b> – Fast gaming and slow-motion</li>
+<li><b>240 FPS</b> – Competitive gaming</li>
+</ul>
+</div>
+
+<div class="box">
+<h2>Frame Rate and Gaming Performance</h2>
+<p>Higher frame rates provide smoother motion and lower input lag. Competitive gaming benefits most from 60 FPS and above.</p>
+</div>
+
+<div class="box">
+<h2>Frame Rate vs Refresh Rate</h2>
+<p><b>Frame Rate (FPS)</b>: Frames produced per second.</p>
+<p><b>Refresh Rate (Hz)</b>: How often your display updates.</p>
+</div>
+
+<div class="box">
+<h2>Boosting Frame Rates</h2>
+<ul>
+<li>Lower resolution</li>
+<li>Update graphics drivers</li>
+<li>Disable background apps</li>
+<li>Improve cooling</li>
+<li>Upgrade GPU / CPU / RAM</li>
+</ul>
+</div>
+
+<div class="box">
+<h2>FAQ</h2>
+<p><b>How do I test my device?</b><br>Use the tool above and press Start.</p>
+<p><b>Best FPS for gaming?</b><br>60 FPS minimum, higher for competitive play.</p>
+<p><b>FPS vs Hz?</b><br>FPS is frames rendered, Hz is screen refresh.</p>
+</div>
+
+</div>
+
+<footer>
+Made by Leo
+</footer>
 
 <script>
-    const canvas = document.getElementById("mainCanvas");
-    const ctx = canvas.getContext("2d");
-    const graph = document.getElementById("graph");
-    const gctx = graph.getContext("2d");
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
+const graph = document.getElementById("graph");
+const gctx = graph.getContext("2d");
 
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let balls = [];
+let running = false;
+let spawnInterval = null;
+
+// FPS tracking
+let lastTime = performance.now();
+let frameCount = 0;
+let fps = 0;
+let history = [];
+
+function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
 
-    let balls = [];
-    let running = false;
+function ball() {
+    return {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 3,
+        vy: (Math.random() - 0.5) * 3,
+        r: 4,
+        c: `hsl(${Math.random()*360},70%,60%)`
+    };
+}
 
-    // FPS tracking
-    let fpsDisplay = document.getElementById("fpsDisplay");
-    let fpsHistory = [];
-    let lastTime = performance.now();
-    let frameCount = 0;
-    let fps = 0;
+function addBalls(n) {
+    for (let i = 0; i < n; i++) balls.push(ball());
+}
 
-    function randomColor() {
-        return "hsl(" + Math.random() * 360 + ", 80%, 60%)";
+function startTest() {
+    if (running) return;
+    running = true;
+    spawnInterval = setInterval(() => addBalls(25), 400);
+}
+
+function stopTest() {
+    running = false;
+    clearInterval(spawnInterval);
+}
+
+function updateFPS(t) {
+    frameCount++;
+    if (t - lastTime >= 1000) {
+        fps = frameCount;
+        frameCount = 0;
+        lastTime = t;
+        history.push(fps);
+        if (history.length > 240) history.shift();
+        document.getElementById("fps").textContent = "FPS: " + fps;
     }
+}
 
-    function createBall() {
-        return {
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            vx: (Math.random() - 0.5) * 4,
-            vy: (Math.random() - 0.5) * 4,
-            r: 3 + Math.random() * 5,
-            color: randomColor()
-        };
-    }
+function drawGraph() {
+    gctx.clearRect(0,0,graph.width,graph.height);
 
-    function addBalls(count) {
-        for (let i = 0; i < count; i++) {
-            balls.push(createBall());
-        }
-    }
-
-    function startGame() {
-        if (running) return;
-        running = true;
-
-        setInterval(() => {
-            if (running) addBalls(20);
-        }, 400);
-    }
-
-    function updateFPS(now) {
-        frameCount++;
-        if (now - lastTime >= 1000) {
-            fps = frameCount;
-            frameCount = 0;
-            lastTime = now;
-
-            fpsHistory.push(fps);
-            if (fpsHistory.length > graph.width) fpsHistory.shift();
-
-            fpsDisplay.textContent = "FPS: " + fps;
-        }
-    }
-
-    function drawGraph() {
-        gctx.clearRect(0, 0, graph.width, graph.height);
+    // grid
+    gctx.strokeStyle = "#ddd";
+    for (let i=0;i<=4;i++){
+        let y = (i/4)*graph.height;
         gctx.beginPath();
-        gctx.strokeStyle = "#007700";
-        gctx.lineWidth = 1;
-
-        for (let i = 0; i < fpsHistory.length; i++) {
-            let v = fpsHistory[i];
-            let x = i;
-            let y = graph.height - (v / 60) * graph.height;
-            if (i == 0) gctx.moveTo(x, y);
-            else gctx.lineTo(x, y);
-        }
+        gctx.moveTo(0,y);
+        gctx.lineTo(graph.width,y);
         gctx.stroke();
     }
 
-    function updateBalls() {
-        balls.forEach(b => {
-            b.x += b.vx;
-            b.y += b.vy;
-            if (b.x < b.r || b.x > canvas.width - b.r) b.vx *= -1;
-            if (b.y < b.r || b.y > canvas.height - b.r) b.vy *= -1;
-        });
-    }
-
-    function drawBalls() {
-        balls.forEach(b => {
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-            ctx.fillStyle = b.color;
-            ctx.fill();
-        });
-    }
-
-    function animate(now) {
-        updateFPS(now);
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        updateBalls();
-        drawBalls();
-        drawGraph();
-
-        requestAnimationFrame(animate);
-    }
-
-    requestAnimationFrame(animate);
-
-    window.addEventListener("resize", () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    gctx.beginPath();
+    gctx.strokeStyle = "#0077cc";
+    history.forEach((v,i)=>{
+        let x = i;
+        let y = graph.height - (Math.min(v,120)/120)*graph.height;
+        if(i===0) gctx.moveTo(x,y);
+        else gctx.lineTo(x,y);
     });
+    gctx.stroke();
+}
+
+function update() {
+    balls.forEach(b=>{
+        b.x+=b.vx; b.y+=b.vy;
+        if(b.x<b.r||b.x>canvas.width-b.r) b.vx*=-1;
+        if(b.y<b.r||b.y>canvas.height-b.r) b.vy*=-1;
+    });
+}
+
+function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    balls.forEach(b=>{
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+        ctx.fillStyle=b.c;
+        ctx.fill();
+    });
+}
+
+function loop(t){
+    updateFPS(t);
+    update();
+    draw();
+    drawGraph();
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 </script>
 
 </body>
