@@ -25,10 +25,36 @@
         width: 260px;
     }
 
+    #hideBtn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        font-size: 12px;
+        padding: 2px 6px;
+        cursor: pointer;
+    }
+
+    #showBtn {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        padding: 6px 10px;
+        border: 1px solid #777;
+        background: #eee;
+        display: none;
+        z-index: 1000;
+        cursor: pointer;
+    }
+
     #fps {
         font-size: 22px;
         font-weight: bold;
         margin-bottom: 4px;
+    }
+
+    #low {
+        font-size: 14px;
+        margin-bottom: 6px;
     }
 
     #count {
@@ -84,8 +110,13 @@
 
 <body>
 
+<button id="showBtn" onclick="showPanel()">Show stats</button>
+
 <div id="top">
+    <button id="hideBtn" onclick="hidePanel()">Hide</button>
+
     <div id="fps">FPS: 0</div>
+    <div id="low">1% Low: 0</div>
     <div id="count">Balls: 0</div>
 
     <button onclick="startTest()">Start spawning</button>
@@ -105,6 +136,11 @@
     <div class="box">
         <h2>FPS Stress Test</h2>
         <p>How many balls czn ur pc handle.</p>
+    </div>
+
+    <div class="box">
+        <h2>Leaderboard</h2>
+        <p>Best score (most balls): <strong id="bestScore">0</strong></p>
     </div>
 </div>
 
@@ -135,6 +171,10 @@ let frameCount = 0;
 let fps = 0;
 let history = [];
 
+const bestScoreEl = document.getElementById("bestScore");
+let bestScore = parseInt(localStorage.getItem("bestScore")) || 0;
+bestScoreEl.textContent = bestScore;
+
 function ball() {
     return {
         x: Math.random() * canvas.width,
@@ -148,6 +188,12 @@ function ball() {
 
 function updateCount() {
     document.getElementById("count").textContent = "Balls: " + balls.length;
+
+    if (balls.length > bestScore) {
+        bestScore = balls.length;
+        bestScoreEl.textContent = bestScore;
+        localStorage.setItem("bestScore", bestScore);
+    }
 }
 
 function addBalls(n) {
@@ -176,15 +222,25 @@ function stopTest() {
     clearInterval(spawnInterval);
 }
 
+function calc1Low() {
+    if (history.length < 20) return 0;
+    const sorted = [...history].sort((a,b)=>a-b);
+    const index = Math.floor(sorted.length * 0.01);
+    return sorted[index] || 0;
+}
+
 function updateFPS(t) {
     frameCount++;
     if (t - lastTime >= 1000) {
         fps = frameCount;
         frameCount = 0;
         lastTime = t;
+
         history.push(fps);
         if (history.length > 240) history.shift();
+
         document.getElementById("fps").textContent = "FPS: " + fps;
+        document.getElementById("low").textContent = "1% Low: " + calc1Low();
     }
 }
 
@@ -227,6 +283,16 @@ function draw() {
         ctx.fillStyle=b.c;
         ctx.fill();
     });
+}
+
+function hidePanel() {
+    document.getElementById("top").style.display = "none";
+    document.getElementById("showBtn").style.display = "block";
+}
+
+function showPanel() {
+    document.getElementById("top").style.display = "block";
+    document.getElementById("showBtn").style.display = "none";
 }
 
 function loop(t){
