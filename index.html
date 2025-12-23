@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FPS Challenge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    body {
+        margin: 0;
+        background: #0e0e0e;
+        color: #fff;
+        font-family: Arial, Helvetica, sans-serif;
+        overflow: hidden;
+    }
+
+    #ui {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.7);
+        padding: 12px;
+        border-radius: 8px;
+        z-index: 10;
+        width: 260px;
+    }
+
+    #fps {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 6px;
+    }
+
+    canvas {
+        display: block;
+    }
+
+    button {
+        margin: 4px 2px;
+        padding: 6px 10px;
+        background: #222;
+        color: #fff;
+        border: 1px solid #444;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #333;
+    }
+
+    #graph {
+        width: 240px;
+        height: 60px;
+        background: #111;
+        border: 1px solid #333;
+        margin-top: 8px;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+    <div id="fps">FPS: 0</div>
+
+    <button onclick="startChallenge()">Start</button><br>
+    <button onclick="addBalls(50)">Add 50</button>
+    <button onclick="addBalls(100)">Add 100</button><br>
+    <button onclick="addBalls(1000)">Add 1000</button>
+    <button onclick="addBalls(5000)">Add 5000</button>
+
+    <canvas id="graph" width="240" height="60"></canvas>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const graph = document.getElementById("graph");
+const gctx = graph.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let balls = [];
+let running = false;
+
+// FPS tracking
+let lastTime = performance.now();
+let frameCount = 0;
+let fps = 0;
+let fpsHistory = [];
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+
+function randomColor() {
+    return `hsl(${Math.random() * 360}, 80%, 60%)`;
+}
+
+function createBall() {
+    return {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4,
+        r: 4 + Math.random() * 4,
+        color: randomColor()
+    };
+}
+
+function addBalls(count) {
+    for (let i = 0; i < count; i++) {
+        balls.push(createBall());
+    }
+}
+
+function startChallenge() {
+    if (running) return;
+    running = true;
+
+    // slowly add balls over time
+    let interval = setInterval(() => {
+        if (!running) {
+            clearInterval(interval);
+            return;
+        }
+        addBalls(20);
+    }, 500);
+}
+
+function updateFPS(now) {
+    frameCount++;
+    if (now - lastTime >= 1000) {
+        fps =
