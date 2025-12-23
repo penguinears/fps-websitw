@@ -21,26 +21,33 @@
         border: 1px solid #bbb;
         padding: 12px;
         border-radius: 6px;
-        z-index: 10;
+        z-index: 1000;
         width: 260px;
     }
 
     #fps {
         font-size: 22px;
         font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    #count {
+        font-size: 14px;
         margin-bottom: 8px;
     }
 
-    button {
+    button, input {
         padding: 6px 10px;
-        margin: 3px;
+        margin: 3px 0;
         border: 1px solid #777;
         background: #eee;
-        cursor: pointer;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     button:hover {
         background: #ddd;
+        cursor: pointer;
     }
 
     canvas {
@@ -54,7 +61,7 @@
     }
 
     #content {
-        margin-top: 90px;
+        margin-top: 100px;
         padding: 20px;
         max-width: 900px;
     }
@@ -64,10 +71,6 @@
         border: 1px solid #ccc;
         padding: 16px;
         margin-bottom: 16px;
-    }
-
-    h2 {
-        margin-top: 0;
     }
 
     footer {
@@ -83,14 +86,15 @@
 
 <div id="top">
     <div id="fps">FPS: 0</div>
+    <div id="count">Balls: 0</div>
 
-    <button onclick="startTest()">Start</button>
-    <button onclick="stopTest()">Stop</button><br>
+    <button onclick="startTest()">Start spawning</button>
+    <button onclick="stopTest()">Stop spawning</button>
 
-    <button onclick="addBalls(50)">Add 50</button>
-    <button onclick="addBalls(100)">Add 100</button><br>
-    <button onclick="addBalls(1000)">Add 1000</button>
-    <button onclick="addBalls(5000)">Add 5000</button>
+    <input id="ballInput" type="number" placeholder="Balls to add">
+    <button onclick="addFromInput()">Add balls</button>
+
+    <button onclick="deleteAll()">Delete all balls</button>
 
     <canvas id="graph" width="240" height="80"></canvas>
 </div>
@@ -98,50 +102,10 @@
 <canvas id="scene"></canvas>
 
 <div id="content">
-
-<div class="box">
-<h2>Understanding Frame Rates: A Comprehensive Guide</h2>
-<p>Frame rate, measured in frames per second (FPS), determines how smooth motion appears in video and games.</p>
-
-<ul>
-<li><b>24 FPS</b> – Cinematic look, films</li>
-<li><b>30 FPS</b> – TV and online video</li>
-<li><b>60 FPS</b> – Gaming and sports</li>
-<li><b>90 FPS</b> – VR content</li>
-<li><b>120 FPS</b> – Fast gaming and slow-motion</li>
-<li><b>240 FPS</b> – Competitive gaming</li>
-</ul>
-</div>
-
-<div class="box">
-<h2>Frame Rate and Gaming Performance</h2>
-<p>Higher frame rates provide smoother motion and lower input lag. Competitive gaming benefits most from 60 FPS and above.</p>
-</div>
-
-<div class="box">
-<h2>Frame Rate vs Refresh Rate</h2>
-<p><b>Frame Rate (FPS)</b>: Frames produced per second.</p>
-<p><b>Refresh Rate (Hz)</b>: How often your display updates.</p>
-</div>
-
-<div class="box">
-<h2>Boosting Frame Rates</h2>
-<ul>
-<li>Lower resolution</li>
-<li>Update graphics drivers</li>
-<li>Disable background apps</li>
-<li>Improve cooling</li>
-<li>Upgrade GPU / CPU / RAM</li>
-</ul>
-</div>
-
-<div class="box">
-<h2>FAQ</h2>
-<p><b>How do I test my device?</b><br>Use the tool above and press Start.</p>
-<p><b>Best FPS for gaming?</b><br>60 FPS minimum, higher for competitive play.</p>
-<p><b>FPS vs Hz?</b><br>FPS is frames rendered, Hz is screen refresh.</p>
-</div>
-
+    <div class="box">
+        <h2>FPS Stress Test</h2>
+        <p>Add balls to test how your device handles rendering load.</p>
+    </div>
 </div>
 
 <footer>
@@ -154,8 +118,12 @@ const ctx = canvas.getContext("2d");
 const graph = document.getElementById("graph");
 const gctx = graph.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
 
 let balls = [];
 let running = false;
@@ -166,12 +134,6 @@ let lastTime = performance.now();
 let frameCount = 0;
 let fps = 0;
 let history = [];
-
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
 
 function ball() {
     return {
@@ -184,8 +146,23 @@ function ball() {
     };
 }
 
+function updateCount() {
+    document.getElementById("count").textContent = "Balls: " + balls.length;
+}
+
 function addBalls(n) {
     for (let i = 0; i < n; i++) balls.push(ball());
+    updateCount();
+}
+
+function addFromInput() {
+    const n = parseInt(document.getElementById("ballInput").value);
+    if (!isNaN(n) && n > 0) addBalls(n);
+}
+
+function deleteAll() {
+    balls = [];
+    updateCount();
 }
 
 function startTest() {
@@ -214,7 +191,6 @@ function updateFPS(t) {
 function drawGraph() {
     gctx.clearRect(0,0,graph.width,graph.height);
 
-    // grid
     gctx.strokeStyle = "#ddd";
     for (let i=0;i<=4;i++){
         let y = (i/4)*graph.height;
