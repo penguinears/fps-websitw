@@ -1,140 +1,177 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>FPS Challenge</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPS Challenge</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #fff; /* homemade website vibe */
+            color: #000;
+            overflow: hidden;
+        }
 
-<style>
-    body {
-        margin: 0;
-        background: #0e0e0e;
-        color: #fff;
-        font-family: Arial, Helvetica, sans-serif;
-        overflow: hidden;
-    }
+        #panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: #eee;
+            border: 1px solid #aaa;
+            padding: 10px;
+            border-radius: 6px;
+            z-index: 10;
+        }
 
-    #ui {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        background: rgba(0,0,0,0.7);
-        padding: 12px;
-        border-radius: 8px;
-        z-index: 10;
-        width: 260px;
-    }
+        #fpsDisplay {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
 
-    #fps {
-        font-size: 20px;
-        font-weight: bold;
-        margin-bottom: 6px;
-    }
-
-    canvas {
-        display: block;
-    }
-
-    button {
-        margin: 4px 2px;
-        padding: 6px 10px;
-        background: #222;
-        color: #fff;
-        border: 1px solid #444;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    button:hover {
-        background: #333;
-    }
-
-    #graph {
-        width: 240px;
-        height: 60px;
-        background: #111;
-        border: 1px solid #333;
-        margin-top: 8px;
-    }
-</style>
+        button {
+            margin: 4px;
+            padding: 6px 10px;
+            border: 1px solid #666;
+            cursor: pointer;
+            background: #ddd;
+        }
+        
+        #graph {
+            border: 1px solid #555;
+            background: #fff;
+            margin-top: 8px;
+        }
+    </style>
 </head>
 
 <body>
 
-<div id="ui">
-    <div id="fps">FPS: 0</div>
-
-    <button onclick="startChallenge()">Start</button><br>
+<div id="panel">
+    <div id="fpsDisplay">FPS: 0</div>
+    <button onclick="startGame()">Start</button><br>
     <button onclick="addBalls(50)">Add 50</button>
     <button onclick="addBalls(100)">Add 100</button><br>
     <button onclick="addBalls(1000)">Add 1000</button>
     <button onclick="addBalls(5000)">Add 5000</button>
-
-    <canvas id="graph" width="240" height="60"></canvas>
+    <canvas id="graph" width="200" height="60"></canvas>
 </div>
 
-<canvas id="game"></canvas>
+<canvas id="mainCanvas"></canvas>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const graph = document.getElementById("graph");
-const gctx = graph.getContext("2d");
+    const canvas = document.getElementById("mainCanvas");
+    const ctx = canvas.getContext("2d");
+    const graph = document.getElementById("graph");
+    const gctx = graph.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-let balls = [];
-let running = false;
-
-// FPS tracking
-let lastTime = performance.now();
-let frameCount = 0;
-let fps = 0;
-let fpsHistory = [];
-
-function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
 
-function randomColor() {
-    return `hsl(${Math.random() * 360}, 80%, 60%)`;
-}
+    let balls = [];
+    let running = false;
 
-function createBall() {
-    return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 4,
-        vy: (Math.random() - 0.5) * 4,
-        r: 4 + Math.random() * 4,
-        color: randomColor()
-    };
-}
+    // FPS tracking
+    let fpsDisplay = document.getElementById("fpsDisplay");
+    let fpsHistory = [];
+    let lastTime = performance.now();
+    let frameCount = 0;
+    let fps = 0;
 
-function addBalls(count) {
-    for (let i = 0; i < count; i++) {
-        balls.push(createBall());
+    function randomColor() {
+        return "hsl(" + Math.random() * 360 + ", 80%, 60%)";
     }
-}
 
-function startChallenge() {
-    if (running) return;
-    running = true;
+    function createBall() {
+        return {
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            r: 3 + Math.random() * 5,
+            color: randomColor()
+        };
+    }
 
-    // slowly add balls over time
-    let interval = setInterval(() => {
-        if (!running) {
-            clearInterval(interval);
-            return;
+    function addBalls(count) {
+        for (let i = 0; i < count; i++) {
+            balls.push(createBall());
         }
-        addBalls(20);
-    }, 500);
-}
+    }
 
-function updateFPS(now) {
-    frameCount++;
-    if (now - lastTime >= 1000) {
-        fps =
+    function startGame() {
+        if (running) return;
+        running = true;
+
+        setInterval(() => {
+            if (running) addBalls(20);
+        }, 400);
+    }
+
+    function updateFPS(now) {
+        frameCount++;
+        if (now - lastTime >= 1000) {
+            fps = frameCount;
+            frameCount = 0;
+            lastTime = now;
+
+            fpsHistory.push(fps);
+            if (fpsHistory.length > graph.width) fpsHistory.shift();
+
+            fpsDisplay.textContent = "FPS: " + fps;
+        }
+    }
+
+    function drawGraph() {
+        gctx.clearRect(0, 0, graph.width, graph.height);
+        gctx.beginPath();
+        gctx.strokeStyle = "#007700";
+        gctx.lineWidth = 1;
+
+        for (let i = 0; i < fpsHistory.length; i++) {
+            let v = fpsHistory[i];
+            let x = i;
+            let y = graph.height - (v / 60) * graph.height;
+            if (i == 0) gctx.moveTo(x, y);
+            else gctx.lineTo(x, y);
+        }
+        gctx.stroke();
+    }
+
+    function updateBalls() {
+        balls.forEach(b => {
+            b.x += b.vx;
+            b.y += b.vy;
+            if (b.x < b.r || b.x > canvas.width - b.r) b.vx *= -1;
+            if (b.y < b.r || b.y > canvas.height - b.r) b.vy *= -1;
+        });
+    }
+
+    function drawBalls() {
+        balls.forEach(b => {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fillStyle = b.color;
+            ctx.fill();
+        });
+    }
+
+    function animate(now) {
+        updateFPS(now);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        updateBalls();
+        drawBalls();
+        drawGraph();
+
+        requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+
+    window.addEventListener("resize", () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+</script>
+
+</body>
+</html>
