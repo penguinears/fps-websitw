@@ -1,4 +1,6 @@
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+
 /* =======================
    Canvas setup
 ======================= */
@@ -13,7 +15,17 @@ function resizeCanvas() {
     canvas.height = window.innerHeight;
 }
 resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+
+function resizeGraph() {
+    graph.width = 240;
+    graph.height = 120;
+}
+resizeGraph();
+
+window.addEventListener("resize", () => {
+    resizeCanvas();
+    resizeGraph();
+});
 
 /* =======================
    UI elements
@@ -30,6 +42,7 @@ const showBtn = document.getElementById("showBtn");
    Layout fix (no overlap)
 ======================= */
 function adjustContentOffset() {
+    if (!topPanel || !content) return;
     content.style.marginTop = (topPanel.offsetHeight + 20) + "px";
 }
 adjustContentOffset();
@@ -88,29 +101,29 @@ function addBalls(n) {
     updateBallCount();
 }
 
-function addFromInput() {
+window.addFromInput = function () {
     const n = parseInt(document.getElementById("ballInput").value);
     if (n > 0) addBalls(n);
-}
+};
 
-function deleteAll() {
+window.deleteAll = function () {
     balls.length = 0;
     updateBallCount();
-}
+};
 
 /* =======================
    Test controls
 ======================= */
-function startTest() {
+window.startTest = function () {
     if (running) return;
     running = true;
     spawnTimer = setInterval(() => addBalls(25), 400);
-}
+};
 
-function stopTest() {
+window.stopTest = function () {
     running = false;
     clearInterval(spawnTimer);
-}
+};
 
 /* =======================
    FPS + 1% low
@@ -192,16 +205,16 @@ function drawBalls() {
 /* =======================
    Panel hide / show
 ======================= */
-function hidePanel() {
+window.hidePanel = function () {
     topPanel.style.display = "none";
     showBtn.style.display = "block";
-}
+};
 
-function showPanel() {
+window.showPanel = function () {
     topPanel.style.display = "block";
     showBtn.style.display = "none";
     adjustContentOffset();
-}
+};
 
 /* =======================
    Main loop
@@ -214,4 +227,6 @@ function loop(time) {
     requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+});
 </script>
