@@ -1,3 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FPS Ball Stress Test</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: sans-serif;
+        background: #111;
+        color: #fff;
+    }
+
+    #top {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #222;
+        padding: 10px;
+        z-index: 10;
+    }
+
+    #content {
+        position: relative;
+    }
+
+    canvas {
+        display: block;
+    }
+
+    #graph {
+        border: 1px solid #444;
+        margin-top: 6px;
+        background: #fff;
+    }
+
+    #showBtn {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        display: none;
+        z-index: 20;
+    }
+
+    button, input {
+        margin-right: 6px;
+    }
+</style>
+</head>
+<body>
+
+<div id="top">
+    <span id="fps">FPS: 0</span> |
+    <span id="low">1% Low: 0</span> |
+    <span id="count">Balls: 0</span> |
+    Best: <span id="bestScore">0</span>
+    <br><br>
+    <input id="ballInput" type="number" value="100">
+    <button onclick="addFromInput()">Add Balls</button>
+    <button onclick="deleteAll()">Clear</button>
+    <button onclick="startTest()">Start Test</button>
+    <button onclick="stopTest()">Stop Test</button>
+    <button onclick="hidePanel()">Hide Panel</button>
+
+    <canvas id="graph"></canvas>
+</div>
+
+<button id="showBtn" onclick="showPanel()">Show Panel</button>
+
+<div id="content">
+    <canvas id="scene"></canvas>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -39,11 +115,10 @@ const content = document.getElementById("content");
 const showBtn = document.getElementById("showBtn");
 
 /* =======================
-   Layout fix (no overlap)
+   Layout fix
 ======================= */
 function adjustContentOffset() {
-    if (!topPanel || !content) return;
-    content.style.marginTop = (topPanel.offsetHeight + 20) + "px";
+    content.style.marginTop = (topPanel.offsetHeight + 10) + "px";
 }
 adjustContentOffset();
 window.addEventListener("resize", adjustContentOffset);
@@ -56,7 +131,7 @@ let running = false;
 let spawnTimer = null;
 
 /* =======================
-   Leaderboard (local)
+   Leaderboard
 ======================= */
 let bestScore = Number(localStorage.getItem("bestScore")) || 0;
 bestScoreEl.textContent = bestScore;
@@ -96,14 +171,12 @@ function updateBallCount() {
     }
 }
 
-function addBalls(n) {
-    for (let i = 0; i < n; i++) balls.push(createBall());
-    updateBallCount();
-}
-
 window.addFromInput = function () {
     const n = parseInt(document.getElementById("ballInput").value);
-    if (n > 0) addBalls(n);
+    if (n > 0) {
+        for (let i = 0; i < n; i++) balls.push(createBall());
+        updateBallCount();
+    }
 };
 
 window.deleteAll = function () {
@@ -117,7 +190,10 @@ window.deleteAll = function () {
 window.startTest = function () {
     if (running) return;
     running = true;
-    spawnTimer = setInterval(() => addBalls(25), 400);
+    spawnTimer = setInterval(() => {
+        for (let i = 0; i < 25; i++) balls.push(createBall());
+        updateBallCount();
+    }, 400);
 };
 
 window.stopTest = function () {
@@ -136,7 +212,6 @@ function calculate1PercentLow() {
 
 function updateFPS(time) {
     frameCounter++;
-
     if (time - lastSecond >= 1000) {
         currentFPS = frameCounter;
         frameCounter = 0;
@@ -193,7 +268,6 @@ function updateBalls() {
 
 function drawBalls() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     for (const b of balls) {
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
@@ -230,3 +304,6 @@ requestAnimationFrame(loop);
 
 });
 </script>
+
+</body>
+</html>
