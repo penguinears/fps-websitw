@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>FPS Test</title>
-
 <style>
 :root {
   --bg:#fff;
@@ -20,41 +19,43 @@ body.dark {
   --line:#4da3ff;
 }
 
-html,body {
-  margin:0;
-  overflow:hidden;
-  background:var(--bg);
-  color:var(--fg);
-  font-family:sans-serif;
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: sans-serif;
 }
 
 #top {
-  position:fixed;
-  top:0; left:0; right:0;
-  background:var(--panel);
-  padding:8px;
-  z-index:10;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  padding: 8px;
+  z-index: 10;
 }
 
 #graph {
-  background:var(--bg);
-  border:1px solid var(--grid);
-  margin-top:6px;
+  background: var(--bg);
+  border: 1px solid var(--grid);
+  margin-top: 6px;
 }
 
-#scene { display:block; }
+#scene { display: block; }
 
 #credit {
-  position:fixed;
-  bottom:8px;
-  right:10px;
-  font-size:12px;
-  opacity:.7;
+  position: fixed;
+  bottom: 8px;
+  right: 10px;
+  font-size: 12px;
+  opacity: 0.7;
 }
-#credit a { color:var(--fg); text-decoration:none; }
+#credit a { color: var(--fg); text-decoration: none; }
 </style>
 </head>
-
 <body class="dark">
 
 <div id="top">
@@ -63,9 +64,9 @@ html,body {
   <span id="count">Balls:0</span><br><br>
 
   <input id="ballInput" type="number" value="100">
-  <button onclick="addBalls()">Add</button>
-  <button onclick="clearBalls()">Clear</button>
-  <button onclick="toggleTheme()">Dark / Light</button>
+  <button id="addBtn">Add</button>
+  <button id="clearBtn">Clear</button>
+  <button id="themeBtn">Dark / Light</button>
 
   <canvas id="graph" width="240" height="120"></canvas>
 </div>
@@ -86,102 +87,112 @@ const fpsEl = document.getElementById("fps");
 const lowEl = document.getElementById("low");
 const countEl = document.getElementById("count");
 const input = document.getElementById("ballInput");
+const addBtn = document.getElementById("addBtn");
+const clearBtn = document.getElementById("clearBtn");
+const themeBtn = document.getElementById("themeBtn");
 
 let balls = [];
 let fpsHistory = [];
 let frames = 0;
-let last = performance.now();
+let lastTime = performance.now();
 
-function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
-resize();
-addEventListener("resize",resize);
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
 
-function newBall(){
+function createBall() {
   return {
-    x:Math.random()*canvas.width,
-    y:Math.random()*canvas.height,
-    vx:(Math.random()-.5)*3,
-    vy:(Math.random()-.5)*3,
-    r:4,
-    c:`hsl(${Math.random()*360},70%,60%)`
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - 0.5) * 4,
+    vy: (Math.random() - 0.5) * 4,
+    r: 4,
+    c: `hsl(${Math.random()*360},70%,60%)`
   };
 }
 
-function addBalls(){
+function addBalls() {
   const n = parseInt(input.value) || 0;
-  for(let i=0;i<n;i++) balls.push(newBall());
-  countEl.textContent="Balls:"+balls.length;
+  for (let i = 0; i < n; i++) balls.push(createBall());
+  countEl.textContent = "Balls:" + balls.length;
 }
 
-function clearBalls(){
-  balls=[];
-  countEl.textContent="Balls:0";
+function clearBalls() {
+  balls = [];
+  countEl.textContent = "Balls:0";
 }
 
-function fpsLow(){
-  if(fpsHistory.length<30) return 0;
-  const s=[...fpsHistory].sort((a,b)=>a-b);
-  return s[Math.floor(s.length*0.01)];
+function fpsLow() {
+  if (fpsHistory.length < 2) return 0;
+  const sorted = [...fpsHistory].sort((a,b)=>a-b);
+  return sorted[Math.floor(sorted.length * 0.01)] || 0;
 }
 
-function drawGraph(){
-  gctx.clearRect(0,0,240,120);
+function drawGraph() {
+  gctx.clearRect(0, 0, graph.width, graph.height);
 
-  gctx.strokeStyle=getComputedStyle(document.body).getPropertyValue("--grid");
-  for(let i=0;i<=4;i++){
-    let y=i/4*120;
+  // Draw grid
+  gctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--grid");
+  for (let i = 0; i <= 4; i++) {
+    const y = i/4 * graph.height;
     gctx.beginPath();
-    gctx.moveTo(0,y);
-    gctx.lineTo(240,y);
+    gctx.moveTo(0, y);
+    gctx.lineTo(graph.width, y);
     gctx.stroke();
   }
 
-  if(fpsHistory.length<2) return;
-  gctx.strokeStyle=getComputedStyle(document.body).getPropertyValue("--line");
-  gctx.beginPath();
+  if (fpsHistory.length < 2) return;
 
-  const step=240/(fpsHistory.length-1);
-  fpsHistory.forEach((v,i)=>{
-    let x=i*step;
-    let y=120-(Math.min(v,120)/120)*120;
-    i?gctx.lineTo(x,y):gctx.moveTo(x,y);
+  gctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--line");
+  gctx.beginPath();
+  const step = graph.width / (fpsHistory.length - 1);
+  const maxFPS = Math.max(...fpsHistory, 60); // scale graph
+  fpsHistory.forEach((v, i) => {
+    const x = i * step;
+    const y = graph.height - (v / maxFPS) * graph.height;
+    i === 0 ? gctx.moveTo(x, y) : gctx.lineTo(x, y);
   });
   gctx.stroke();
 }
 
-function loop(t){
+function loop(time) {
   frames++;
-  if(t-last>=1000){
+  if (time - lastTime >= 1000) {
     fpsHistory.push(frames);
-    if(fpsHistory.length>240) fpsHistory.shift();
-    fpsEl.textContent="FPS:"+frames;
-    lowEl.textContent="1% Low:"+fpsLow();
-    frames=0;
-    last=t;
+    if (fpsHistory.length > 240) fpsHistory.shift();
+    fpsEl.textContent = "FPS:" + frames;
+    lowEl.textContent = "1% Low:" + fpsLow();
+    frames = 0;
+    lastTime = time;
   }
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  balls.forEach(b=>{
-    b.x+=b.vx; b.y+=b.vy;
-    if(b.x<b.r||b.x>canvas.width-b.r) b.vx*=-1;
-    if(b.y<b.r||b.y>canvas.height-b.r) b.vy*=-1;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  balls.forEach(b => {
+    b.x += b.vx;
+    b.y += b.vy;
+
+    if (b.x < b.r || b.x > canvas.width - b.r) b.vx *= -1;
+    if (b.y < b.r || b.y > canvas.height - b.r) b.vy *= -1;
+
     ctx.beginPath();
-    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
-    ctx.fillStyle=b.c;
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fillStyle = b.c;
     ctx.fill();
   });
 
   drawGraph();
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
 
-function toggleTheme(){
-  document.body.classList.toggle("dark");
-}
+addBtn.addEventListener("click", addBalls);
+clearBtn.addEventListener("click", clearBalls);
+themeBtn.addEventListener("click", () => document.body.classList.toggle("dark"));
+
+requestAnimationFrame(loop);
 </script>
+
 </body>
 </html>
