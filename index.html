@@ -3,54 +3,85 @@
 <head>
 <meta charset="UTF-8">
 <title>FPS Ball Stress Test</title>
+
 <style>
-    html, body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: sans-serif;
-        background: #111;
-        color: #fff;
-    }
+:root {
+    --bg: #ffffff;
+    --fg: #000000;
+    --panel: #eeeeee;
+    --grid: #cccccc;
+    --graph-line: #0077cc;
+}
 
-    #top {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: #222;
-        padding: 10px;
-        z-index: 10;
-    }
+body.dark {
+    --bg: #111111;
+    --fg: #ffffff;
+    --panel: #222222;
+    --grid: #444444;
+    --graph-line: #4da3ff;
+}
 
-    #content {
-        position: relative;
-    }
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: sans-serif;
+}
 
-    canvas {
-        display: block;
-    }
+#top {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--panel);
+    padding: 10px;
+    z-index: 10;
+}
 
-    #graph {
-        border: 1px solid #444;
-        margin-top: 6px;
-        background: #fff;
-    }
+#content {
+    position: relative;
+}
 
-    #showBtn {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        display: none;
-        z-index: 20;
-    }
+canvas {
+    display: block;
+}
 
-    button, input {
-        margin-right: 6px;
-    }
+#graph {
+    border: 1px solid var(--grid);
+    background: var(--bg);
+    margin-top: 6px;
+}
+
+button, input {
+    margin-right: 6px;
+}
+
+#showBtn {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    display: none;
+    z-index: 20;
+}
+
+#credit {
+    position: fixed;
+    bottom: 8px;
+    right: 10px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+#credit a {
+    color: var(--fg);
+    text-decoration: none;
+}
 </style>
 </head>
-<body>
+
+<body class="dark">
 
 <div id="top">
     <span id="fps">FPS: 0</span> |
@@ -58,11 +89,13 @@
     <span id="count">Balls: 0</span> |
     Best: <span id="bestScore">0</span>
     <br><br>
+
     <input id="ballInput" type="number" value="100">
-    <button onclick="addFromInput()">Add Balls</button>
+    <button onclick="addFromInput()">Add</button>
     <button onclick="deleteAll()">Clear</button>
     <button onclick="startTest()">Start Test</button>
-    <button onclick="stopTest()">Stop Test</button>
+    <button onclick="stopTest()">Stop</button>
+    <button onclick="toggleTheme()">Dark / Light</button>
     <button onclick="hidePanel()">Hide Panel</button>
 
     <canvas id="graph"></canvas>
@@ -72,6 +105,10 @@
 
 <div id="content">
     <canvas id="scene"></canvas>
+</div>
+
+<div id="credit">
+    <a href="https://madebyleo.vercel.app" target="_blank">madebyleo.vercel.app</a>
 </div>
 
 <script>
@@ -90,21 +127,21 @@ function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
-resizeCanvas();
-
 function resizeGraph() {
     graph.width = 240;
     graph.height = 120;
 }
+resizeCanvas();
 resizeGraph();
 
 window.addEventListener("resize", () => {
     resizeCanvas();
     resizeGraph();
+    adjustContentOffset();
 });
 
 /* =======================
-   UI elements
+   UI
 ======================= */
 const fpsEl = document.getElementById("fps");
 const lowEl = document.getElementById("low");
@@ -121,7 +158,6 @@ function adjustContentOffset() {
     content.style.marginTop = (topPanel.offsetHeight + 10) + "px";
 }
 adjustContentOffset();
-window.addEventListener("resize", adjustContentOffset);
 
 /* =======================
    State
@@ -163,7 +199,6 @@ function createBall() {
 ======================= */
 function updateBallCount() {
     countEl.textContent = "Balls: " + balls.length;
-
     if (balls.length > bestScore) {
         bestScore = balls.length;
         bestScoreEl.textContent = bestScore;
@@ -172,7 +207,7 @@ function updateBallCount() {
 }
 
 window.addFromInput = function () {
-    const n = parseInt(document.getElementById("ballInput").value);
+    const n = parseInt(ballInput.value);
     if (n > 0) {
         for (let i = 0; i < n; i++) balls.push(createBall());
         updateBallCount();
@@ -226,84 +261,14 @@ function updateFPS(time) {
 }
 
 /* =======================
-   Graph
+   Graph (FIXED)
 ======================= */
 function drawGraph() {
     gctx.clearRect(0, 0, graph.width, graph.height);
 
-    gctx.strokeStyle = "#ddd";
+    gctx.strokeStyle = getComputedStyle(document.body)
+        .getPropertyValue("--grid");
+
     for (let i = 0; i <= 4; i++) {
         const y = (i / 4) * graph.height;
         gctx.beginPath();
-        gctx.moveTo(0, y);
-        gctx.lineTo(graph.width, y);
-        gctx.stroke();
-    }
-
-    gctx.beginPath();
-    gctx.strokeStyle = "#0077cc";
-
-    fpsHistory.forEach((v, i) => {
-        const x = i;
-        const y = graph.height - (Math.min(v, 120) / 120) * graph.height;
-        if (i === 0) gctx.moveTo(x, y);
-        else gctx.lineTo(x, y);
-    });
-
-    gctx.stroke();
-}
-
-/* =======================
-   Simulation
-======================= */
-function updateBalls() {
-    for (const b of balls) {
-        b.x += b.vx;
-        b.y += b.vy;
-
-        if (b.x < b.r || b.x > canvas.width - b.r) b.vx *= -1;
-        if (b.y < b.r || b.y > canvas.height - b.r) b.vy *= -1;
-    }
-}
-
-function drawBalls() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const b of balls) {
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fillStyle = b.c;
-        ctx.fill();
-    }
-}
-
-/* =======================
-   Panel hide / show
-======================= */
-window.hidePanel = function () {
-    topPanel.style.display = "none";
-    showBtn.style.display = "block";
-};
-
-window.showPanel = function () {
-    topPanel.style.display = "block";
-    showBtn.style.display = "none";
-    adjustContentOffset();
-};
-
-/* =======================
-   Main loop
-======================= */
-function loop(time) {
-    updateFPS(time);
-    updateBalls();
-    drawBalls();
-    drawGraph();
-    requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
-
-});
-</script>
-
-</body>
-</html>
