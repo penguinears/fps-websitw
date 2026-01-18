@@ -1,274 +1,187 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>FPS Ball Stress Test</title>
+<title>FPS Test</title>
 
 <style>
 :root {
-    --bg: #ffffff;
-    --fg: #000000;
-    --panel: #eeeeee;
-    --grid: #cccccc;
-    --graph-line: #0077cc;
+  --bg:#fff;
+  --fg:#000;
+  --panel:#eee;
+  --grid:#ccc;
+  --line:#0077cc;
 }
-
 body.dark {
-    --bg: #111111;
-    --fg: #ffffff;
-    --panel: #222222;
-    --grid: #444444;
-    --graph-line: #4da3ff;
+  --bg:#111;
+  --fg:#fff;
+  --panel:#222;
+  --grid:#444;
+  --line:#4da3ff;
 }
 
-html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: sans-serif;
+html,body {
+  margin:0;
+  overflow:hidden;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:sans-serif;
 }
 
 #top {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: var(--panel);
-    padding: 10px;
-    z-index: 10;
-}
-
-#content {
-    position: relative;
-}
-
-canvas {
-    display: block;
+  position:fixed;
+  top:0; left:0; right:0;
+  background:var(--panel);
+  padding:8px;
+  z-index:10;
 }
 
 #graph {
-    border: 1px solid var(--grid);
-    background: var(--bg);
-    margin-top: 6px;
+  background:var(--bg);
+  border:1px solid var(--grid);
+  margin-top:6px;
 }
 
-button, input {
-    margin-right: 6px;
-}
-
-#showBtn {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    display: none;
-    z-index: 20;
-}
+#scene { display:block; }
 
 #credit {
-    position: fixed;
-    bottom: 8px;
-    right: 10px;
-    font-size: 12px;
-    opacity: 0.7;
+  position:fixed;
+  bottom:8px;
+  right:10px;
+  font-size:12px;
+  opacity:.7;
 }
-
-#credit a {
-    color: var(--fg);
-    text-decoration: none;
-}
+#credit a { color:var(--fg); text-decoration:none; }
 </style>
 </head>
 
 <body class="dark">
 
 <div id="top">
-    <span id="fps">FPS: 0</span> |
-    <span id="low">1% Low: 0</span> |
-    <span id="count">Balls: 0</span> |
-    Best: <span id="bestScore">0</span>
-    <br><br>
+  <span id="fps">FPS:0</span> |
+  <span id="low">1% Low:0</span> |
+  <span id="count">Balls:0</span><br><br>
 
-    <input id="ballInput" type="number" value="100">
-    <button onclick="addFromInput()">Add</button>
-    <button onclick="deleteAll()">Clear</button>
-    <button onclick="startTest()">Start Test</button>
-    <button onclick="stopTest()">Stop</button>
-    <button onclick="toggleTheme()">Dark / Light</button>
-    <button onclick="hidePanel()">Hide Panel</button>
+  <input id="ballInput" type="number" value="100">
+  <button onclick="addBalls()">Add</button>
+  <button onclick="clearBalls()">Clear</button>
+  <button onclick="toggleTheme()">Dark / Light</button>
 
-    <canvas id="graph"></canvas>
+  <canvas id="graph" width="240" height="120"></canvas>
 </div>
 
-<button id="showBtn" onclick="showPanel()">Show Panel</button>
-
-<div id="content">
-    <canvas id="scene"></canvas>
-</div>
+<canvas id="scene"></canvas>
 
 <div id="credit">
-    <a href="https://madebyleo.vercel.app" target="_blank">madebyleo.vercel.app</a>
+  <a href="https://madebyleo.vercel.app" target="_blank">madebyleo.vercel.app</a>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-
-/* =======================
-   Canvas setup
-======================= */
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d");
-
 const graph = document.getElementById("graph");
 const gctx = graph.getContext("2d");
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-function resizeGraph() {
-    graph.width = 240;
-    graph.height = 120;
-}
-resizeCanvas();
-resizeGraph();
-
-window.addEventListener("resize", () => {
-    resizeCanvas();
-    resizeGraph();
-    adjustContentOffset();
-});
-
-/* =======================
-   UI
-======================= */
 const fpsEl = document.getElementById("fps");
 const lowEl = document.getElementById("low");
 const countEl = document.getElementById("count");
-const bestScoreEl = document.getElementById("bestScore");
-const topPanel = document.getElementById("top");
-const content = document.getElementById("content");
-const showBtn = document.getElementById("showBtn");
+const input = document.getElementById("ballInput");
 
-/* =======================
-   Layout fix
-======================= */
-function adjustContentOffset() {
-    content.style.marginTop = (topPanel.offsetHeight + 10) + "px";
-}
-adjustContentOffset();
-
-/* =======================
-   State
-======================= */
 let balls = [];
-let running = false;
-let spawnTimer = null;
-
-/* =======================
-   Leaderboard
-======================= */
-let bestScore = Number(localStorage.getItem("bestScore")) || 0;
-bestScoreEl.textContent = bestScore;
-
-/* =======================
-   FPS tracking
-======================= */
-let lastSecond = performance.now();
-let frameCounter = 0;
 let fpsHistory = [];
-let currentFPS = 0;
+let frames = 0;
+let last = performance.now();
 
-/* =======================
-   Ball factory
-======================= */
-function createBall() {
-    return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 3,
-        vy: (Math.random() - 0.5) * 3,
-        r: 4,
-        c: `hsl(${Math.random() * 360},70%,60%)`
-    };
+function resize(){
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+resize();
+addEventListener("resize",resize);
+
+function newBall(){
+  return {
+    x:Math.random()*canvas.width,
+    y:Math.random()*canvas.height,
+    vx:(Math.random()-.5)*3,
+    vy:(Math.random()-.5)*3,
+    r:4,
+    c:`hsl(${Math.random()*360},70%,60%)`
+  };
 }
 
-/* =======================
-   Ball management
-======================= */
-function updateBallCount() {
-    countEl.textContent = "Balls: " + balls.length;
-    if (balls.length > bestScore) {
-        bestScore = balls.length;
-        bestScoreEl.textContent = bestScore;
-        localStorage.setItem("bestScore", bestScore);
-    }
+function addBalls(){
+  const n = parseInt(input.value) || 0;
+  for(let i=0;i<n;i++) balls.push(newBall());
+  countEl.textContent="Balls:"+balls.length;
 }
 
-window.addFromInput = function () {
-    const n = parseInt(ballInput.value);
-    if (n > 0) {
-        for (let i = 0; i < n; i++) balls.push(createBall());
-        updateBallCount();
-    }
-};
-
-window.deleteAll = function () {
-    balls.length = 0;
-    updateBallCount();
-};
-
-/* =======================
-   Test controls
-======================= */
-window.startTest = function () {
-    if (running) return;
-    running = true;
-    spawnTimer = setInterval(() => {
-        for (let i = 0; i < 25; i++) balls.push(createBall());
-        updateBallCount();
-    }, 400);
-};
-
-window.stopTest = function () {
-    running = false;
-    clearInterval(spawnTimer);
-};
-
-/* =======================
-   FPS + 1% low
-======================= */
-function calculate1PercentLow() {
-    if (fpsHistory.length < 30) return 0;
-    const sorted = [...fpsHistory].sort((a, b) => a - b);
-    return sorted[Math.floor(sorted.length * 0.01)] || 0;
+function clearBalls(){
+  balls=[];
+  countEl.textContent="Balls:0";
 }
 
-function updateFPS(time) {
-    frameCounter++;
-    if (time - lastSecond >= 1000) {
-        currentFPS = frameCounter;
-        frameCounter = 0;
-        lastSecond = time;
-
-        fpsHistory.push(currentFPS);
-        if (fpsHistory.length > 240) fpsHistory.shift();
-
-        fpsEl.textContent = "FPS: " + currentFPS;
-        lowEl.textContent = "1% Low: " + calculate1PercentLow();
-    }
+function fpsLow(){
+  if(fpsHistory.length<30) return 0;
+  const s=[...fpsHistory].sort((a,b)=>a-b);
+  return s[Math.floor(s.length*0.01)];
 }
 
-/* =======================
-   Graph (FIXED)
-======================= */
-function drawGraph() {
-    gctx.clearRect(0, 0, graph.width, graph.height);
+function drawGraph(){
+  gctx.clearRect(0,0,240,120);
 
-    gctx.strokeStyle = getComputedStyle(document.body)
-        .getPropertyValue("--grid");
+  gctx.strokeStyle=getComputedStyle(document.body).getPropertyValue("--grid");
+  for(let i=0;i<=4;i++){
+    let y=i/4*120;
+    gctx.beginPath();
+    gctx.moveTo(0,y);
+    gctx.lineTo(240,y);
+    gctx.stroke();
+  }
 
-    for (let i = 0; i <= 4; i++) {
-        const y = (i / 4) * graph.height;
-        gctx.beginPath();
+  if(fpsHistory.length<2) return;
+  gctx.strokeStyle=getComputedStyle(document.body).getPropertyValue("--line");
+  gctx.beginPath();
+
+  const step=240/(fpsHistory.length-1);
+  fpsHistory.forEach((v,i)=>{
+    let x=i*step;
+    let y=120-(Math.min(v,120)/120)*120;
+    i?gctx.lineTo(x,y):gctx.moveTo(x,y);
+  });
+  gctx.stroke();
+}
+
+function loop(t){
+  frames++;
+  if(t-last>=1000){
+    fpsHistory.push(frames);
+    if(fpsHistory.length>240) fpsHistory.shift();
+    fpsEl.textContent="FPS:"+frames;
+    lowEl.textContent="1% Low:"+fpsLow();
+    frames=0;
+    last=t;
+  }
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  balls.forEach(b=>{
+    b.x+=b.vx; b.y+=b.vy;
+    if(b.x<b.r||b.x>canvas.width-b.r) b.vx*=-1;
+    if(b.y<b.r||b.y>canvas.height-b.r) b.vy*=-1;
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.fillStyle=b.c;
+    ctx.fill();
+  });
+
+  drawGraph();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function toggleTheme(){
+  document.body.classList.toggle("dark");
+}
+</script>
+</body>
+</html>
